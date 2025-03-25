@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Clock</title>
@@ -12,18 +13,26 @@
       margin: 0;
       padding: 20px;
       text-align: center;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      padding: 20px;
     }
     .light { background-color: #f0f0f0; color: #333; }
     .dark { background-color: #333; color: #f0f0f0; }
-    #clock { font-size: 6rem; font-variant-numeric: tabular-nums; }
+    #clock { font-size: 16rem; font-variant-numeric: tabular-nums; }
     .controls { margin: 20px; display: flex; justify-content: center; gap: 15px; }
     button { font-size: 2rem; background: none; border: none; cursor: pointer; transition: transform 0.2s; }
     button:hover { transform: scale(1.2); }
     .fullscreen-mode { display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 0; }
     .fullscreen-mode .non-clock { display: none; }
     .fullscreen-mode #clock { font-size: 15rem; }
+    
     /* Dropdown styling */
-    .dropdown { position: relative; display: inline-block; }
+    .dropdown { position: relative; display: inline-block; align-items: center;
+        justify-content: center;}
     .dropdown-content {
       display: none;
       position: absolute;
@@ -35,6 +44,8 @@
       z-index: 1;
       max-height: 300px;
       overflow-y: auto;
+      align-items: center;
+      justify-content: center;
     }
     .dark .dropdown-content {
       background-color: #333; /* Dark mode background */
@@ -46,6 +57,7 @@
       padding: 5px; 
       cursor: pointer; 
       transition: background-color 0.2s; 
+      width: 20vw;
     }
     /* Highlight DST-active items */
     .dst-active {
@@ -54,16 +66,45 @@
       padding-left: 7px;
     }
     .dropdown-content.show { display: block; }
+    .non-clock {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 5px;
+    }
+
+    .fa-solid {
+      color: currentColor;
+      font-size: 3rem;
+      padding: 5px;
+    }
+    .light .fa-solid {
+      color: #333;
+    }
+    .dark .fa-solid {
+      color: #f0f0f0;
+    }
+    .light .fa-lightbulb {
+      display: none;
+
+    }
+    .dark .fa-moon {
+      display: none;
+    }
+
+
   </style>
 </head>
-<body class="light">
+<body class="dark">
+    <div id="clock">--:--:--</div>
+    <hr style="width: 25%; border: 1px solid #666; margin: 20px 0;" class = "non-clock">
   <div class="non-clock">
     <div class="controls">
-      <button id="modeToggle">🌗</button>
-      <button id="formatToggle">⏳</button>
-      <button id="fullscreenToggle">🔲</button>
-      <div class="dropdown">
-        <button id="timezoneToggle">🌍</button>
+        <button id="modeToggle"><i class="fa-solid fa-lightbulb"></i><i class="fa-solid fa-moon"></i></button>    
+        <button id="formatToggle"><i class="fa-solid fa-clock"></i></button>    
+        <button id="fullscreenToggle"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></button>
+        <div class="dropdown">
+          <button id="timezoneToggle"><i class="fa-solid fa-globe"></i></button>
         <ul id="timezones" class="dropdown-content">
           <li data-tz="America/Toronto">🇨🇦 Toronto (ET)</li>
           <li data-tz="America/Los_Angeles">🇺🇸 Los Angeles (PT)</li>
@@ -80,7 +121,7 @@
     </div>
   </div>
 
-  <div id="clock">--:--:--</div>
+  
 
   <script>
     const clockElement = document.getElementById('clock');
@@ -105,12 +146,21 @@
         return { time: new Date(), dst: false };
       }
     }
+
+    let clockOffset = 0;
+
+    async function syncWithServerTime() {
+      const result = await fetchInternetTime();
+      const serverTime = result.time.getTime();
+      const localTime = Date.now();
+      clockOffset = serverTime - localTime;
+    }
+
     
     // Update the main clock
     async function updateClock() {
-      const result = await fetchInternetTime();
-      const nowUTC = result.time;
-      const localNow = new Date(nowUTC.toLocaleString("en-US", { timeZone: selectedTimeZone }));
+      const now = new Date(Date.now() - clockOffset);
+      const localNow = new Date(now.toLocaleString("en-US", { timeZone: selectedTimeZone }));
       const options = is24Hour 
         ? { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }
         : { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
@@ -182,8 +232,15 @@
     updateClock();
     updateDropdownDST();
     // Update clock every second and dropdown DST info periodically (e.g., every hour)
-    setInterval(updateClock, 1000);
-    setInterval(updateDropdownDST, 3600000);
+    async function initializeClock() {
+      await syncWithServerTime();
+      updateClock();
+      setInterval(updateClock, 1000);
+      setInterval(syncWithServerTime, 3600000); // Sync every hour
+    }
+    
+    // Replace the old initialization with:
+    initializeClock();
   </script>
 </body>
 </html>
